@@ -1,0 +1,41 @@
+{
+  "name": "md2card-mcp-server",
+  "version": "0.1.5",
+  "description": "markdown to card",
+  "private": false,
+  "type": "module",
+  "bin": {
+    "md2card-mcp-server": "./build/index.js"
+  },
+  "files": [
+    "build"
+  ],
+  "main": "./build/index.js",
+  "keywords": [
+    "markdown",
+    "card",
+    "mcp",
+    "model context protocol"
+  ],
+  "author": "",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/maqi1520/md2card-mcp-server.git"
+  },
+  "homepage": "https://md2card.cn",
+  "scripts": {
+    "build": "tsc && node -e \"require('fs').chmodSync('build/index.js', '755')\"",
+    "prepare": "npm run build",
+    "watch": "tsc --watch",
+    "inspector": "npx @modelcontextprotocol/inspector build/index.js"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.2.1"
+  },
+  "devDependencies": {
+    "@types/axios": "^0.14.4",
+    "@types/node": "^20.11.24",
+    "typescript": "^5.3.3"
+  }
+}

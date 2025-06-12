@@ -1,0 +1,14 @@
+{
+  "params": {
+    "name": "md2card_api",
+    "arguments": {
+      "markdownFile": "./example.md",
+      "theme": "apple-notes",
+      "themeMode": "dark-mode",
+      "width": 440,
+      "height": 586,
+      "type": "小红书",
+      "splitMode": "autoSplit"
+    }
+  }
+}
