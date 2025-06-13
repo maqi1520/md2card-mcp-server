@@ -94,7 +94,7 @@ clone 项目到本地，找到 index.js 路径替换到客户端 mcp 配置文�
 {
   "md2card-server": {
     "command": "npx",
-    "args": ["md2card-mcp-server"],
+    "args": ["md2card-mcp-server@latest"],
     "env": {
       "MD2CARD_API_KEY": "您的API密钥"
     }
@@ -109,7 +109,8 @@ clone 项目到本地，找到 index.js 路径替换到客户端 mcp 配置文�
 ```json
 {
   "md2card-server": {
-    "command": "md2card-mcp-server",
+    "command": "npx",
+    "args": ["-y", "md2card-mcp-server@latest"],
     "env": {
       "MD2CARD_API_KEY": "您的API密钥"
     }

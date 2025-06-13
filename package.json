@@ -1,6 +1,6 @@
 {
   "name": "md2card-mcp-server",
-  "version": "0.1.6",
+  "version": "0.1.7",
   "description": "markdown to card",
   "private": false,
   "type": "module",
@@ -31,10 +31,10 @@
     "inspector": "npx @modelcontextprotocol/inspector build/index.js"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.2.1"
+    "@modelcontextprotocol/sdk": "^1.2.1",
+    "axios": "^1.7.9"
   },
   "devDependencies": {
-    "@types/axios": "^0.14.4",
     "@types/node": "^20.11.24",
     "typescript": "^5.3.3"
   }
