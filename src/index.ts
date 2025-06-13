@@ -173,6 +173,7 @@ class MD2CardServer {
             自动拆分: "autoSplit",
             横线拆分: "hrSplit",
             不拆分: "noSplit",
+            长图文: "noSplit",
           };
 
           // 处理参数
@@ -243,16 +244,35 @@ class MD2CardServer {
           if (!response.data) {
             throw new McpError(ErrorCode.InternalError, "无效的API响应");
           }
-
-          // 直接返回API原始响应
-          return {
-            content: [
-              {
-                type: "text",
-                text: JSON.stringify(response.data),
-              },
-            ],
-          };
+          if (response.data.success) {
+            // 以markdown格式拼接返回内容
+            const images: { fileName: string; url: string; size: number }[] =
+              response.data.images || [];
+            const imageLinks = images
+              .map(
+                (img) =>
+                  `[${img.fileName}](${img.url})\n图片大小：${img.size} KB`
+              )
+              .join("\n");
+            const markdownResult = `**下载图片**\n${imageLinks}\n\n**在线编辑**\n[点击在线编辑](${response.data.previewUrl})\n\n- 本次消耗积分：${response.data.cost}`;
+            return {
+              content: [
+                {
+                  type: "text",
+                  text: markdownResult,
+                },
+              ],
+            };
+          } else {
+            return {
+              content: [
+                {
+                  type: "text",
+                  text: JSON.stringify(response.data),
+                },
+              ],
+            };
+          }
         } catch (error) {
           console.error("转换失败:", error);
           return {
