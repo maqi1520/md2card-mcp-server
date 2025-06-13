@@ -1,6 +1,6 @@
 {
   "name": "md2card-mcp-server",
-  "version": "0.1.8",
+  "version": "0.1.9",
   "description": "markdown to card",
   "private": false,
   "type": "module",
