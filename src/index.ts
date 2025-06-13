@@ -48,13 +48,38 @@ class MD2CardServer {
                 type: "string",
                 description: "卡片类型（小红书/正方形/手机海报/A4纸打印）",
               },
-              width: { type: "number", default: 440 },
-              height: { type: "number", default: 586 },
-              theme: { type: "string", default: "apple-notes" },
-              themeMode: { type: "string" },
-              splitMode: { type: "string", default: "noSplit" },
-              mdxMode: { type: "boolean", default: false },
-              overHiddenMode: { type: "boolean", default: false },
+              width: {
+                type: "number",
+                default: 440,
+                description: "卡片宽度",
+              },
+              height: { type: "number", default: 586, description: "卡片高度" },
+              theme: {
+                type: "string",
+                default: "apple-notes",
+                description:
+                  "卡片主题（默认：苹果备忘录）（苹果备忘录/线圈笔记本/波普艺术/字节范/阿里橙/艺术装饰/玻璃拟态/温暖柔和/简约高级灰/梦幻渐变/清新自然/紫色小红书/笔记本/暗黑科技/复古打字机/水彩艺术/中国传统/儿童童话/商务简报/日本杂志/极简黑白/赛博朋克/青野晨光）",
+              },
+              themeMode: {
+                type: "string",
+                description:
+                  "卡片主题模式（默认模式/粉蓝模式/薄荷模式/紫色模式/蓝色模式/粉色模式/黄色模式/亮色模式/暗黑模式）",
+              },
+              splitMode: {
+                type: "string",
+                default: "noSplit",
+                description: "卡片拆分模式",
+              },
+              mdxMode: {
+                type: "boolean",
+                default: false,
+                description: "是否启用MDX模式",
+              },
+              overHiddenMode: {
+                type: "boolean",
+                default: false,
+                description: "是否启用超出高度隐藏",
+              },
             },
             required: [],
           },
