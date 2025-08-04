@@ -7,13 +7,14 @@ import {
   ListToolsRequestSchema,
   McpError,
 } from "@modelcontextprotocol/sdk/types.js";
-import axios from "axios";
-import fs from "fs";
-import path from "path";
+import { WechatScraper } from "./wechat-scraper.js";
+import { MD2CardConverter } from "./md2card-converter.js";
 
 class MD2CardServer {
   private server: Server;
   private API_KEY: string;
+  private wechatScraper: WechatScraper;
+  private md2CardConverter: MD2CardConverter;
 
   constructor() {
     this.server = new Server(
@@ -29,6 +30,8 @@ class MD2CardServer {
     );
 
     this.API_KEY = process.env.MD2CARD_API_KEY || "";
+    this.wechatScraper = new WechatScraper();
+    this.md2CardConverter = new MD2CardConverter(this.API_KEY);
 
     this.setupToolHandlers();
   }
@@ -120,6 +123,20 @@ class MD2CardServer {
             required: [],
           },
         },
+        {
+          name: "wechat_scraper",
+          description: "抓取微信公众号文章并转换为 Markdown 格式",
+          inputSchema: {
+            type: "object",
+            properties: {
+              url: {
+                type: "string",
+                description: "微信公众号文章的 URL 地址",
+              },
+            },
+            required: ["url"],
+          },
+        },
       ],
     }));
 
@@ -127,10 +144,48 @@ class MD2CardServer {
       CallToolRequestSchema,
       async (request: any) => {
         try {
-          if (request.params.name !== "md2card_api") {
+          if (request.params.name !== "md2card_api" && request.params.name !== "wechat_scraper") {
             throw new McpError(ErrorCode.MethodNotFound, "未知工具");
           }
 
+          // Handle WeChat scraper
+          if (request.params.name === "wechat_scraper") {
+            const { url } = request.params.arguments;
+            
+            if (!url) {
+              throw new McpError(
+                ErrorCode.InvalidParams,
+                "请提供微信公众号文章的URL"
+              );
+            }
+
+            try {
+              const markdownContent = await this.wechatScraper.scrapeArticle(url);
+              return {
+                content: [
+                  {
+                    type: "text",
+                    text: markdownContent,
+                  },
+                ],
+              };
+            } catch (error) {
+              return {
+                content: [
+                  {
+                    type: "text",
+                    text: JSON.stringify({
+                      error: true,
+                      message: error instanceof Error ? error.message : "抓取失败",
+                    }),
+                  },
+                ],
+                isError: true,
+              };
+            }
+          }
+
+          // Handle md2card_api (existing functionality)
           if (!this.API_KEY) {
             throw new McpError(
               ErrorCode.InvalidParams,
@@ -138,184 +193,36 @@ class MD2CardServer {
             );
           }
 
-          // 参数映射处理
-          let {
+          // Handle md2card_api using the converter
+          const {
             markdown,
             markdownFile,
             type,
-            width = 440,
-            height = 586,
-            theme = "apple-notes",
+            width,
+            height,
+            theme,
             themeMode,
-            splitMode = "noSplit",
-            mdxMode = false,
-            overHiddenMode = false,
+            splitMode,
+            mdxMode,
+            overHiddenMode,
           } = request.params.arguments;
 
-          // 如果提供了markdownFile，尝试从文件读取markdown内容
-          if (markdownFile && !markdown) {
-            try {
-              const filePath = path.resolve(markdownFile);
-              if (fs.existsSync(filePath)) {
-                markdown = fs.readFileSync(filePath, "utf-8");
-                console.log(`成功从文件 ${filePath} 读取Markdown内容`);
-              } else {
-                throw new McpError(
-                  ErrorCode.InvalidParams,
-                  `Markdown文件 ${filePath} 不存在`
-                );
-              }
-            } catch (error: any) {
-              throw new McpError(
-                ErrorCode.InvalidParams,
-                `读取Markdown文件失败: ${error.message}`
-              );
-            }
-          }
+          try {
+            const result = await this.md2CardConverter.convertToCard({
+              markdown,
+              markdownFile,
+              type,
+              width,
+              height,
+              theme,
+              themeMode,
+              splitMode,
+              mdxMode,
+              overHiddenMode,
+            });
 
-          // 确保至少有markdown内容
-          if (!markdown) {
-            throw new McpError(
-              ErrorCode.InvalidParams,
-              "请提供markdown内容或markdown文件路径"
-            );
-          }
-
-          // 主题映射
-          const themeMap: Record<string, string> = {
-            苹果备忘录: "apple-notes",
-            线圈笔记本: "coil-notebook",
-            波普艺术: "pop-art",
-            字节范: "bytedance",
-            阿里橙: "alibaba",
-            艺术装饰: "art-deco",
-            玻璃拟态: "glassmorphism",
-            温暖柔和: "warm",
-            简约高级灰: "minimal",
-            梦幻渐变: "dreamy",
-            清新自然: "nature",
-            紫色小红书: "xiaohongshu",
-            笔记本: "notebook",
-            暗黑科技: "darktech",
-            复古打字机: "typewriter",
-            水彩艺术: "watercolor",
-            中国传统: "traditional-chinese",
-            儿童童话: "fairytale",
-            商务简报: "business",
-            日本杂志: "japanese-magazine",
-            极简黑白: "minimalist",
-            赛博朋克: "cyberpunk",
-            青野晨光: "meadow-dawn",
-          };
-
-          // 主题模式映射
-          const themeModeMap: Record<string, string> = {
-            默认: "default-mode",
-            粉蓝模式: "pink-blue-mode",
-            薄荷模式: "mint-mode",
-            紫色模式: "purple-mode",
-            蓝色模式: "blue-mode",
-            粉色模式: "pink-mode",
-            黄色模式: "yellow-mode",
-            亮色模式: "light-mode",
-            暗黑模式: "dark-mode",
-          };
-
-          // 尺寸预设映射
-          const sizeMap: Record<string, { width: number; height: number }> = {
-            小红书: { width: 440, height: 586 }, // 3:4比例
-            正方形: { width: 500, height: 500 },
-            手机海报: { width: 440, height: 782 }, // 9:16比例
-            A4纸打印: { width: 595, height: 842 },
-          };
-
-          // 拆分模式映射
-          const splitModeMap: Record<string, string> = {
-            自动拆分: "autoSplit",
-            横线拆分: "hrSplit",
-            不拆分: "noSplit",
-            长图文: "noSplit",
-          };
-
-          // 处理参数
-          const finalTheme = themeMap[theme] || theme;
-          let finalWidth = width;
-          let finalHeight = height;
-          const finalSplitMode = splitModeMap[splitMode] || splitMode;
-
-          // 首先检查type参数
-          if (type && typeof type === "string") {
-            console.log(`处理type参数: "${type}"`);
-            // 直接查找完全匹配的预设
-            if (sizeMap[type]) {
-              finalWidth = sizeMap[type].width;
-              finalHeight = sizeMap[type].height;
-              console.log(
-                `使用类型预设(完全匹配): ${type} (${finalWidth}x${finalHeight})`
-              );
-            } else {
-              // 检查是否包含预设名称
-              let found = false;
-              for (const [presetName, presetSize] of Object.entries(sizeMap)) {
-                console.log(`尝试匹配: "${type}" 是否包含 "${presetName}"`);
-                if (type.includes(presetName)) {
-                  finalWidth = presetSize.width;
-                  finalHeight = presetSize.height;
-                  console.log(
-                    `使用类型预设(部分匹配): ${presetName} (${finalWidth}x${finalHeight})`
-                  );
-                  found = true;
-                  break;
-                }
-              }
-
-              // 处理可能的空格问题 - 特别检查A4纸打印
-              if (!found && (type.includes("A4") || type.includes("a4"))) {
-                console.log(`检测到A4关键字，尝试匹配A4纸打印`);
-                finalWidth = sizeMap["A4纸打印"].width;
-                finalHeight = sizeMap["A4纸打印"].height;
-                console.log(`使用A4纸打印预设: (${finalWidth}x${finalHeight})`);
-              }
-            }
-          }
-
-          // 严格按照API要求的格式构造请求体
-          const requestBody = {
-            markdown: markdown,
-            theme: finalTheme,
-            themeMode: themeModeMap[themeMode] || themeMode,
-            width: finalWidth,
-            height: finalHeight,
-            splitMode: finalSplitMode,
-            mdxMode: mdxMode,
-            overHiddenMode: overHiddenMode,
-          };
-
-          const response = await axios.post(
-            "https://md2card.cn/api/generate",
-            requestBody,
-            {
-              headers: {
-                "Content-Type": "application/json",
-                "x-api-key": this.API_KEY,
-              },
-            }
-          );
-
-          if (!response.data) {
-            throw new McpError(ErrorCode.InternalError, "无效的API响应");
-          }
-          if (response.data.success) {
-            // 以markdown格式拼接返回内容
-            const images: { fileName: string; url: string; size: number }[] =
-              response.data.images || [];
-            const imageLinks = images
-              .map(
-                (img) =>
-                  `[${img.fileName}](${img.url})\n图片大小：${img.size} KB`
-              )
-              .join("\n");
-            const markdownResult = `**下载图片**\n${imageLinks}\n\n**在线编辑**\n[点击在线编辑](${response.data.previewUrl})\n\n- 本次消耗积分：${response.data.cost}`;
+            const markdownResult = this.md2CardConverter.formatResultAsMarkdown(result);
+            
             return {
               content: [
                 {
@@ -324,14 +231,18 @@ class MD2CardServer {
                 },
               ],
             };
-          } else {
+          } catch (error) {
             return {
               content: [
                 {
                   type: "text",
-                  text: JSON.stringify(response.data),
+                  text: JSON.stringify({
+                    error: true,
+                    message: error instanceof Error ? error.message : "转换失败",
+                  }),
                 },
               ],
+              isError: true,
             };
           }
         } catch (error) {
